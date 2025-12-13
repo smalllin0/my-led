@@ -1,0 +1,57 @@
+menu "LED 组件配置"
+    
+    config SUPPORT_BRIGHTNESS_ADJUST
+        bool "是否支持亮度调节功能"
+        default y
+        help
+            启用此选项以支持亮度调节功能（需使用LEDC）
+    config CONFIG_MAX_BRIGHTNESS
+        depends on SUPPORT_BRIGHTNESS_ADJUST
+        int "最大可调节亮度"
+        default 120
+        range 10 127
+        help 
+            "配置亮度调节功能的最大亮度（默认使用7位精度）"
+
+# 定时器选择
+    choice LED_TIMER
+        prompt "选择实现LED控制的定时器"
+        default LED_USE_FREERTOS_TIMER
+        help 
+            "选择用于控制LED的定时器：esp timer , FreeRTOS timer 或 GPTimer"
+        config LED_USE_FREERTOS_TIMER
+            depends on SUPPORT_BRIGHTNESS_ADJUST
+            bool "FREERTOS_TIMER"
+            help
+                "分辨率低(100~1000Hz),移植性好"
+        config LED_USE_GPTIMER
+            depends on !SUPPORT_BRIGHTNESS_ADJUST
+            bool "GPTIMER"
+            help
+                "硬件定时器，分辨率高、实时性强" 
+        config LED_USE_ESP_TIMER
+            bool "ESP_TIMER"
+            depends on !SUPPORT_BRIGHTNESS_ADJUST
+            help
+                "高分辨率定时器"
+    endchoice
+
+# ESP Timer分发方式选择
+    if LED_USE_ESP_TIMER
+    choice ESP_TIMER_DISPATCH_METHOD
+        prompt "ESP Timer分发方式"
+        default ESP_TIMER_DISPATCH_TASK
+        help
+            选择ESP Timer回调函数的执行上下文。
+        config ESP_TIMER_DISPATCH_TASK
+            bool "在任务中分发"
+            help
+                回调函数调度至低优先级任务中执行（安全性高，适合处理耗时、高内存操作）
+        config ESP_TIMER_DISPATCH_ISR
+            bool "在中断中分发"
+            help
+                回调函数直接在中断中执行，响应快速（不支持阻塞API），需注意回调函数要精简
+    endchoice
+    endif
+
+endmenu
